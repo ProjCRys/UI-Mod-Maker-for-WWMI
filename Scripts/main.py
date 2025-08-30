@@ -174,80 +174,68 @@ def save_settings(settings):
         json.dump(settings, f, indent=4)
 
 
-# --- FIX: Refined background thread for a safe and targeted update process. ---
+# --- FIX: Update thread now accepts a parameter to conditionally run the backup. ---
 class UpdateThread(QThread):
     progress = pyqtSignal(str)
     finished = pyqtSignal(bool, str)
 
-    def __init__(self):
+    def __init__(self, should_backup: bool):
         super().__init__()
+        self.should_backup = should_backup
         self.repo_owner = "ProjCRys"
         self.repo_name = "UI-Mod-Maker-for-WWMI"
         self.github_zip_link = f"https://github.com/{self.repo_owner}/{self.repo_name}/archive/refs/heads/main.zip"
         
-        # The app_path is the directory where this script is running (the 'Scripts' folder).
         self.app_path = os.path.dirname(os.path.abspath(sys.argv[0]))
         self.download_path = os.path.join(self.app_path, 'update.zip')
 
     def run(self):
-        # Define temporary paths for the update process.
         temp_extract_path = os.path.join(self.app_path, 'temp_update')
         
         try:
-            # STEP 1: BACKUP THE CURRENT VERSION
-            # This is the most crucial step. We back up the *existing* 'Scripts' folder
-            # *before* downloading or applying any changes. This ensures the backup is
-            # of the old version, just as requested.
-            self.progress.emit("Backing up the current version...")
-            parent_dir = os.path.dirname(self.app_path)
-            backup_folder_name = f"backup_{self.repo_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-            backup_path = os.path.join(parent_dir, backup_folder_name)
-            
-            # Use ignore_patterns to avoid backing up unnecessary temporary files from previous attempts.
-            ignore_patterns = shutil.ignore_patterns('*.pyc', '__pycache__', 'backup_*', 'temp_update', '*.zip')
-            shutil.copytree(self.app_path, backup_path, ignore=ignore_patterns)
-            
+            # STEP 1: BACKUP THE CURRENT VERSION (CONDITIONAL)
+            if self.should_backup:
+                self.progress.emit("Backing up the current version...")
+                parent_dir = os.path.dirname(self.app_path)
+                backup_folder_name = f"backup_{self.repo_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+                backup_path = os.path.join(parent_dir, backup_folder_name)
+                
+                ignore_patterns = shutil.ignore_patterns('*.pyc', '__pycache__', 'backup_*', 'temp_update', '*.zip')
+                shutil.copytree(self.app_path, backup_path, ignore=ignore_patterns)
+            else:
+                self.progress.emit("Skipping backup as requested.")
+
             # STEP 2: DOWNLOAD THE NEW VERSION
-            # The new version is downloaded as a single zip file.
             self.progress.emit(f"Downloading update from {self.repo_owner}/{self.repo_name}...")
             urllib.request.urlretrieve(self.github_zip_link, self.download_path)
             
             # STEP 3: EXTRACT TO A TEMPORARY FOLDER
-            # To avoid corrupting the application while files are being moved, we extract
-            # the update to a separate, temporary directory first.
             self.progress.emit("Extracting new files...")
             if os.path.exists(temp_extract_path):
-                shutil.rmtree(temp_extract_path) # Clean up from any previous failed attempt
+                shutil.rmtree(temp_extract_path)
             
             with zipfile.ZipFile(self.download_path, 'r') as zip_ref:
                 zip_ref.extractall(temp_extract_path)
             
             # STEP 4: APPLY THE UPDATE FROM THE TEMPORARY FOLDER
-            # Now, we identify the 'Scripts' folder within the extracted files and
-            # copy its contents over the existing application files.
             self.progress.emit("Applying update...")
-            # The root folder in the zip is typically named 'repo-name-main'
             update_source_dir = os.path.join(temp_extract_path, f'{self.repo_name}-main', 'Scripts')
 
             if not os.path.isdir(update_source_dir):
                 raise FileNotFoundError("The required 'Scripts' folder was not found in the downloaded update.")
 
-            # Copy each file and folder from the source to the destination (the running script's directory).
             for item in os.listdir(update_source_dir):
                 source_item = os.path.join(update_source_dir, item)
                 dest_item = os.path.join(self.app_path, item)
                 
                 if os.path.isdir(source_item):
-                    # If it's a directory, remove the old one and copy the new one.
                     if os.path.exists(dest_item):
                         shutil.rmtree(dest_item)
                     shutil.copytree(source_item, dest_item)
                 else:
-                    # If it's a file, just copy it over.
                     shutil.copy2(source_item, dest_item)
             
             # STEP 5: CLEANUP
-            # Remove the downloaded zip file and the temporary extraction folder.
             self.progress.emit("Cleaning up...")
             os.remove(self.download_path)
             shutil.rmtree(temp_extract_path)
@@ -255,7 +243,6 @@ class UpdateThread(QThread):
             self.finished.emit(True, "Update successful! The application will now restart.")
 
         except Exception as e:
-            # If anything goes wrong at any step, report the error and clean up.
             self.finished.emit(False, f"An error occurred: {e}")
             if os.path.exists(self.download_path):
                 os.remove(self.download_path)
@@ -755,19 +742,44 @@ class MainWindow(QMainWindow):
             QApplication.instance().quit()
             os.execv(sys.executable, ['python'] + sys.argv)
     
+    # --- FIX: Update process now asks the user if they want to create a backup. ---
     def start_update(self):
+        # First, confirm the user wants to start the update process at all.
         confirm_dialog = QMessageBox(self)
         confirm_dialog.setIcon(QMessageBox.Question)
-        confirm_dialog.setText("Are you sure you want to update?")
-        confirm_dialog.setInformativeText("This will back up your current version, download the latest files, and restart the application.")
+        confirm_dialog.setText("Are you sure you want to check for updates?")
+        confirm_dialog.setInformativeText("The application will download the latest version and restart. Any unsaved work will be lost.")
         confirm_dialog.setWindowTitle("Confirm Update")
         confirm_dialog.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-        if confirm_dialog.exec_() == QMessageBox.Yes:
-            self.settings_layer.update_button.setEnabled(False)
-            self.update_thread = UpdateThread()
-            self.update_thread.progress.connect(self.on_update_progress)
-            self.update_thread.finished.connect(self.on_update_finished)
-            self.update_thread.start()
+        confirm_dialog.setDefaultButton(QMessageBox.No)
+        
+        if confirm_dialog.exec_() == QMessageBox.No:
+            return # User cancelled the entire process.
+
+        # Second, ask the user if they want to perform a backup.
+        backup_dialog = QMessageBox(self)
+        backup_dialog.setIcon(QMessageBox.Question)
+        backup_dialog.setText("Create a backup before updating?")
+        backup_dialog.setInformativeText("This is highly recommended. The backup will be stored in a folder next to your 'Scripts' directory.")
+        backup_dialog.setWindowTitle("Backup Confirmation")
+        backup_dialog.setStandardButtons(QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
+        backup_dialog.setDefaultButton(QMessageBox.Yes) # Default to 'Yes' for safety.
+        
+        result = backup_dialog.exec_()
+
+        if result == QMessageBox.Cancel:
+            return # User cancelled.
+
+        # Determine if a backup should be made based on the user's choice.
+        should_backup = (result == QMessageBox.Yes)
+
+        # Start the update thread, passing the user's choice.
+        self.settings_layer.update_button.setEnabled(False)
+        self.settings_layer.update_status_label.setText("Starting update process...")
+        self.update_thread = UpdateThread(should_backup=should_backup)
+        self.update_thread.progress.connect(self.on_update_progress)
+        self.update_thread.finished.connect(self.on_update_finished)
+        self.update_thread.start()
 
     def on_update_progress(self, message):
         self.settings_layer.update_status_label.setText(message)

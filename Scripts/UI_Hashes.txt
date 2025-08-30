@@ -1,0 +1,55 @@
+[Team Portrait]
+Aalto --> 06afb6c7
+Augusta --> 1d79713d
+Baizhi --> 8e536f03
+Brant --> 3ece2a39
+Calcharo --> 7f8df0b3
+Camellya --> da14ee89
+Cantarella --> c8ae362f
+Carlotta --> bc8bedc9
+Carlotta(Swimsuit) --> edd74dab
+Cartethyia --> 0ae8c89e
+Changli --> 5d22afbc
+Changli(Swimsuit) --> 43182244
+Chixia --> 461fb401
+Ciaccona --> aca00308
+Danjin --> 18bf410a
+Encore --> 9f193f21
+Female_rover --> 30d29c41
+Jianxin --> 0f6df4e5
+Jinhsi --> d9d919eb
+Jinhsi(Newyear) --> e6d1829e
+Jiyan --> bfaf79df
+Lingyang --> e828b620
+Lumi --> 16f378b3
+Lupa --> 4c1fe941
+Male_Rover --> bc84161f
+Mortefi --> ea8d1b15
+Phrolova --> 1b5570f0
+Phoebe --> 73efd301
+Roccia --> 6a4795fb
+Rover --> 30d29c41
+Sanhua --> 486af6a0
+Sanhua(NewYear) --> 62552f81
+Shorekeeper --> 10c525d0
+Taoqi --> 3f7c3903
+Verina --> 146c6a6d
+Xiangli --> a7dae3cb
+Yangyang --> c2adf773
+Yinlin --> db41a7c0
+Youhu --> 06770f65
+Yuanwu --> b8bf4687
+Zani --> 474c22e1
+Zhezhi --> f0cecfc8
+
+[General UI]
+Menu --> 5db4fc8a
+
+[Upcoming Characters]
+Iuno --> iunoHash
+Galbrena --> galbrenaHash
+Chisa --> chisaHash
+Qiuyuan --> qiunyuanHash
+Scar --> scarHash
+Geshu_Lin --> geshulinHash
+Buling --> bulingHash

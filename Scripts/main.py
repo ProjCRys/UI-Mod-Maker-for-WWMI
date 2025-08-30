@@ -73,7 +73,6 @@ THEMES = {
         'close_btn': "background-color: transparent; border: none; color: #9ca3af; font-size: 20px; font-weight: bold;",
         'close_btn_hover': "color: #ef4444;",
         'add_icon_color': '#E75480',
-        # --- MODIFICATION: Added styles for the new settings page ---
         'settings_container': "QFrame { background-color: #f8fafc; border-radius: 8px; }",
         'settings_title': "QLabel { color: #333; font-size: 24px; font-weight: bold; }",
         'settings_section_title': "QLabel { color: #555; font-size: 16px; font-weight: bold; border-bottom: 1px solid #FADADD; padding-bottom: 5px; }",
@@ -127,7 +126,6 @@ THEMES = {
         'close_btn': "background-color: transparent; border: none; color: #b2bec3; font-size: 20px; font-weight: bold;",
         'close_btn_hover': "color: #d63031;",
         'add_icon_color': '#00cec9',
-        # --- MODIFICATION: Added styles for the new settings page ---
         'settings_container': "QFrame { background-color: #3b4245; border-radius: 8px; }",
         'settings_title': "QLabel { color: #dfe6e9; font-size: 24px; font-weight: bold; }",
         'settings_section_title': "QLabel { color: #b2bec3; font-size: 16px; font-weight: bold; border-bottom: 1px solid #444c4e; padding-bottom: 5px; }",
@@ -153,11 +151,9 @@ class SideNavAddButton(QPushButton):
 CONFIG_FILE = 'settings.json'
 
 def load_settings():
-    # --- MODIFICATION: Added githubLink to default settings ---
     defaults = {
         "show_tutorial_on_startup": True, 
-        "theme": "dark",
-        "githubLink": "" # Example: "https://github.com/user/repo/archive/refs/heads/main.zip"
+        "theme": "dark"
     }
     if not os.path.exists(CONFIG_FILE):
         save_settings(defaults)
@@ -165,7 +161,6 @@ def load_settings():
     try:
         with open(CONFIG_FILE, 'r') as f:
             settings = json.load(f)
-            # Ensure all keys exist
             for key, value in defaults.items():
                 if key not in settings:
                     settings[key] = value
@@ -179,63 +174,93 @@ def save_settings(settings):
         json.dump(settings, f, indent=4)
 
 
-# --- MODIFICATION: New background thread class for handling the update process ---
+# --- FIX: Refined background thread for a safe and targeted update process. ---
 class UpdateThread(QThread):
     progress = pyqtSignal(str)
     finished = pyqtSignal(bool, str)
 
-    def __init__(self, github_link):
+    def __init__(self):
         super().__init__()
-        self.github_link = github_link
+        self.repo_owner = "ProjCRys"
+        self.repo_name = "UI-Mod-Maker-for-WWMI"
+        self.github_zip_link = f"https://github.com/{self.repo_owner}/{self.repo_name}/archive/refs/heads/main.zip"
+        
+        # The app_path is the directory where this script is running (the 'Scripts' folder).
         self.app_path = os.path.dirname(os.path.abspath(sys.argv[0]))
         self.download_path = os.path.join(self.app_path, 'update.zip')
 
     def run(self):
+        # Define temporary paths for the update process.
+        temp_extract_path = os.path.join(self.app_path, 'temp_update')
+        
         try:
-            # 1. Create Backup
-            self.progress.emit("Creating backup...")
-            backup_folder = f"backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-            backup_path = os.path.join(os.path.dirname(self.app_path), backup_folder)
-            shutil.copytree(self.app_path, backup_path, ignore=shutil.ignore_patterns('*.pyc', '__pycache__', 'backup_*'))
+            # STEP 1: BACKUP THE CURRENT VERSION
+            # This is the most crucial step. We back up the *existing* 'Scripts' folder
+            # *before* downloading or applying any changes. This ensures the backup is
+            # of the old version, just as requested.
+            self.progress.emit("Backing up the current version...")
+            parent_dir = os.path.dirname(self.app_path)
+            backup_folder_name = f"backup_{self.repo_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            backup_path = os.path.join(parent_dir, backup_folder_name)
             
-            # 2. Download
-            self.progress.emit(f"Downloading update from {self.github_link}...")
-            urllib.request.urlretrieve(self.github_link, self.download_path)
+            # Use ignore_patterns to avoid backing up unnecessary temporary files from previous attempts.
+            ignore_patterns = shutil.ignore_patterns('*.pyc', '__pycache__', 'backup_*', 'temp_update', '*.zip')
+            shutil.copytree(self.app_path, backup_path, ignore=ignore_patterns)
             
-            # 3. Extract
-            self.progress.emit("Extracting files...")
+            # STEP 2: DOWNLOAD THE NEW VERSION
+            # The new version is downloaded as a single zip file.
+            self.progress.emit(f"Downloading update from {self.repo_owner}/{self.repo_name}...")
+            urllib.request.urlretrieve(self.github_zip_link, self.download_path)
+            
+            # STEP 3: EXTRACT TO A TEMPORARY FOLDER
+            # To avoid corrupting the application while files are being moved, we extract
+            # the update to a separate, temporary directory first.
+            self.progress.emit("Extracting new files...")
+            if os.path.exists(temp_extract_path):
+                shutil.rmtree(temp_extract_path) # Clean up from any previous failed attempt
+            
             with zipfile.ZipFile(self.download_path, 'r') as zip_ref:
-                # Check if the zip contains a single root folder
-                file_list = zip_ref.namelist()
-                if all(f.startswith(file_list[0]) for f in file_list):
-                    # It's a root folder (typical for GitHub zips). Extract and move contents.
-                    temp_extract_path = os.path.join(self.app_path, 'temp_update')
-                    zip_ref.extractall(temp_extract_path)
-                    
-                    root_folder_name = os.path.join(temp_extract_path, file_list[0])
-                    for item in os.listdir(root_folder_name):
-                        s = os.path.join(root_folder_name, item)
-                        d = os.path.join(self.app_path, item)
-                        if os.path.isdir(s):
-                            shutil.rmtree(d, ignore_errors=True)
-                            shutil.move(s, d)
-                        else:
-                            shutil.move(s, d)
-                    shutil.rmtree(temp_extract_path, ignore_errors=True)
-                else:
-                    # No root folder, extract directly.
-                    zip_ref.extractall(self.app_path)
+                zip_ref.extractall(temp_extract_path)
             
-            # 4. Cleanup
+            # STEP 4: APPLY THE UPDATE FROM THE TEMPORARY FOLDER
+            # Now, we identify the 'Scripts' folder within the extracted files and
+            # copy its contents over the existing application files.
+            self.progress.emit("Applying update...")
+            # The root folder in the zip is typically named 'repo-name-main'
+            update_source_dir = os.path.join(temp_extract_path, f'{self.repo_name}-main', 'Scripts')
+
+            if not os.path.isdir(update_source_dir):
+                raise FileNotFoundError("The required 'Scripts' folder was not found in the downloaded update.")
+
+            # Copy each file and folder from the source to the destination (the running script's directory).
+            for item in os.listdir(update_source_dir):
+                source_item = os.path.join(update_source_dir, item)
+                dest_item = os.path.join(self.app_path, item)
+                
+                if os.path.isdir(source_item):
+                    # If it's a directory, remove the old one and copy the new one.
+                    if os.path.exists(dest_item):
+                        shutil.rmtree(dest_item)
+                    shutil.copytree(source_item, dest_item)
+                else:
+                    # If it's a file, just copy it over.
+                    shutil.copy2(source_item, dest_item)
+            
+            # STEP 5: CLEANUP
+            # Remove the downloaded zip file and the temporary extraction folder.
             self.progress.emit("Cleaning up...")
             os.remove(self.download_path)
+            shutil.rmtree(temp_extract_path)
 
-            self.finished.emit(True, "Update successful! Application will now restart.")
+            self.finished.emit(True, "Update successful! The application will now restart.")
 
         except Exception as e:
+            # If anything goes wrong at any step, report the error and clean up.
             self.finished.emit(False, f"An error occurred: {e}")
             if os.path.exists(self.download_path):
                 os.remove(self.download_path)
+            if os.path.exists(temp_extract_path):
+                shutil.rmtree(temp_extract_path)
 
 class ModuleContainer(QFrame):
     closed = pyqtSignal()
@@ -439,7 +464,6 @@ class TutorialLayer(ConceptLayer):
             js_code = f"document.documentElement.classList.toggle('dark-mode', {str(theme_name == 'dark').lower()});"
             self.web_view.page().runJavaScript(js_code)
 
-# --- MODIFICATION: New class for the Settings page UI ---
 class SettingsLayer(QWidget):
     def __init__(self, main_window, parent=None):
         super().__init__(parent)
@@ -455,18 +479,15 @@ class SettingsLayer(QWidget):
         self.container_layout.setSpacing(20)
         self.container = container
 
-        # Title
         title = QLabel("Settings")
         self.title_label = title
         
-        # --- Appearance Section ---
         appearance_label = QLabel("Appearance")
         self.appearance_label = appearance_label
         
         self.theme_button = QPushButton()
         self.theme_button.clicked.connect(self.main_window.toggle_theme)
 
-        # --- Application Section ---
         app_label = QLabel("Application")
         self.app_label = app_label
 
@@ -480,7 +501,6 @@ class SettingsLayer(QWidget):
         self.update_status_label.setAlignment(Qt.AlignCenter)
         self.update_status_label.setWordWrap(True)
 
-        # Add widgets to layout
         self.container_layout.addWidget(title, 0, Qt.AlignCenter)
         self.container_layout.addSpacing(20)
         self.container_layout.addWidget(appearance_label)
@@ -513,7 +533,6 @@ class MainWindow(QMainWindow):
         self.script_dir = os.path.dirname(os.path.abspath(__file__))
         self.plus_icon_path = os.path.join(self.script_dir, 'Tutorial-Resources', '+.png')
         
-        # --- MODIFICATION: Create previews directory and add screenshot shortcut ---
         os.makedirs("previews", exist_ok=True)
         self.screenshot_shortcut = QShortcut(QKeySequence("Ctrl+P"), self)
         self.screenshot_shortcut.activated.connect(self.take_previews)
@@ -560,7 +579,6 @@ class MainWindow(QMainWindow):
         self.toggle_btn.clicked.connect(self.toggle_sidenav)
         self.software_name = QLabel("Animated UI Maker for WWMI")
         
-        # --- MODIFICATION: Cleaned up top bar buttons ---
         self.home_btn = QPushButton("🏠 Home")
         self.home_btn.setFixedSize(100, 40)
         self.home_btn.clicked.connect(lambda: self.switch_module("Home"))
@@ -623,7 +641,6 @@ class MainWindow(QMainWindow):
         
         self.sidenav_layout.addStretch()
 
-        # --- MODIFICATION: Added Settings button to bottom of sidenav ---
         self.settings_btn = QPushButton("⚙️ Settings")
         self.settings_btn.setCursor(Qt.PointingHandCursor)
         self.settings_btn.setMinimumHeight(40)
@@ -705,7 +722,6 @@ class MainWindow(QMainWindow):
         self.home_layer.home_loaded.connect(self.show_tutorial_on_home_load)
         self.plugin_maker_ai_layer = PluginMakerAILayer()
         self.tutorial_layer = TutorialLayer()
-        # --- MODIFICATION: Instantiate the new SettingsLayer ---
         self.settings_layer = SettingsLayer(self)
 
         self.module_layers = {
@@ -715,7 +731,6 @@ class MainWindow(QMainWindow):
             "INI File Maker v2": self.ini_maker_v2_layer, "Home": self.home_layer,
             "Plugin Maker AI (Experimental)": self.plugin_maker_ai_layer,
             "Tutorial": self.tutorial_layer,
-            # --- MODIFICATION: Add SettingsLayer to the dictionary ---
             "Settings": self.settings_layer
         }
         for layer in self.module_layers.values():
@@ -740,13 +755,7 @@ class MainWindow(QMainWindow):
             QApplication.instance().quit()
             os.execv(sys.executable, ['python'] + sys.argv)
     
-    # --- MODIFICATION: New methods to handle the update process ---
     def start_update(self):
-        github_link = self.settings.get("githubLink", "").strip()
-        if not github_link:
-            QMessageBox.warning(self, "Update Error", "The 'githubLink' is not set in settings.json.")
-            return
-
         confirm_dialog = QMessageBox(self)
         confirm_dialog.setIcon(QMessageBox.Question)
         confirm_dialog.setText("Are you sure you want to update?")
@@ -755,7 +764,7 @@ class MainWindow(QMainWindow):
         confirm_dialog.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
         if confirm_dialog.exec_() == QMessageBox.Yes:
             self.settings_layer.update_button.setEnabled(False)
-            self.update_thread = UpdateThread(github_link)
+            self.update_thread = UpdateThread()
             self.update_thread.progress.connect(self.on_update_progress)
             self.update_thread.finished.connect(self.on_update_finished)
             self.update_thread.start()
@@ -766,7 +775,8 @@ class MainWindow(QMainWindow):
     def on_update_finished(self, success, message):
         self.settings_layer.update_status_label.setText(message)
         if success:
-            QTimer.singleShot(2000, self.refresh_application)
+            QMessageBox.information(self, "Update Successful", message)
+            QTimer.singleShot(1000, self.refresh_application)
         else:
             QMessageBox.critical(self, "Update Failed", message)
             self.settings_layer.update_button.setEnabled(True)
@@ -803,7 +813,6 @@ class MainWindow(QMainWindow):
 
         self.sidenav.setStyleSheet(theme['sidenav'])
         self.sidenav_title.setStyleSheet(theme['sidenav_title'])
-        # --- MODIFICATION: Style settings button in sidenav ---
         self.settings_btn.setStyleSheet(f"QPushButton {{ {theme['module_label']} text-align: left; padding-left: 20px; border: none; }} QPushButton:hover {{ {theme['module_widget_hover']} }}")
 
         for title in self.group_titles:
@@ -836,7 +845,6 @@ class MainWindow(QMainWindow):
                     widget = layer.container_layout.itemAt(i).widget()
                     self.apply_theme_to_widget(widget, theme_name)
         
-        # --- MODIFICATION: Style the new SettingsLayer widgets ---
         sl = self.settings_layer
         sl.container.setStyleSheet(theme['settings_container'])
         sl.title_label.setStyleSheet(theme['settings_title'])
@@ -913,11 +921,7 @@ class MainWindow(QMainWindow):
             else:
                 download.cancel()
 
-    # --- MODIFICATION: Methods for taking screenshots ---
     def take_previews(self):
-        """
-        Starts the process of taking screenshots of specified modules in both light and dark themes.
-        """
         self.modules_to_screenshot = [
             "Home", "Tutorial", "Video Editor", "INI File Maker", "Video Processing",
             "Optimize Frame", "INI File Maker v2", "HTML Plugins", "PyQt5 Plugins",
@@ -934,9 +938,6 @@ class MainWindow(QMainWindow):
         QTimer.singleShot(100, self._process_next_screenshot)
 
     def _process_next_screenshot(self):
-        """
-        Processes one step of the screenshot sequence: switching theme/module.
-        """
         if self.current_screenshot_index >= len(self.modules_to_screenshot):
             self.apply_theme(self.original_theme)
             self.layer_stack.setCurrentWidget(self.original_module_widget)
@@ -951,9 +952,6 @@ class MainWindow(QMainWindow):
         QTimer.singleShot(delay, lambda: self._capture_and_proceed(module_name, theme))
 
     def _capture_and_proceed(self, module_name, theme):
-        """
-        Captures the screenshot and triggers the next step.
-        """
         sanitized_name = ''.join(c for c in module_name if c.isalnum() or c in " _-").rstrip().replace(" ", "_")
         filename = os.path.join("previews", f"{sanitized_name}_{theme.capitalize()}.png")
         self.grab().save(filename)
@@ -968,7 +966,6 @@ if __name__ == "__main__":
     multiprocessing.freeze_support()
     app = QApplication(sys.argv)
     QWebEngineSettings.globalSettings().setAttribute(QWebEngineSettings.PluginsEnabled, True)
-    # --- FIX: Enable hardware acceleration for canvas, often needed for video ---
     QWebEngineSettings.globalSettings().setAttribute(QWebEngineSettings.Accelerated2dCanvasEnabled, True)
     QWebEngineSettings.globalSettings().setAttribute(QWebEngineSettings.PlaybackRequiresUserGesture, False)
     window = MainWindow()

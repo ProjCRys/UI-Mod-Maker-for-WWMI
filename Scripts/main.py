@@ -478,7 +478,7 @@ class SettingsLayer(QWidget):
         app_label = QLabel("Application")
         self.app_label = app_label
 
-        self.refresh_button = QPushButton("Refresh Application")
+        self.refresh_button = QPushButton("Reboot Application")
         self.refresh_button.clicked.connect(self.main_window.refresh_application)
         
         self.update_button = QPushButton("Update")

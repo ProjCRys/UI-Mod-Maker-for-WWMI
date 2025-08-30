@@ -481,7 +481,7 @@ class SettingsLayer(QWidget):
         self.refresh_button = QPushButton("Refresh Application")
         self.refresh_button.clicked.connect(self.main_window.refresh_application)
         
-        self.update_button = QPushButton("Check for Updates")
+        self.update_button = QPushButton("Update")
         self.update_button.clicked.connect(self.main_window.start_update)
 
         self.update_status_label = QLabel("")
@@ -747,7 +747,7 @@ class MainWindow(QMainWindow):
         # First, confirm the user wants to start the update process at all.
         confirm_dialog = QMessageBox(self)
         confirm_dialog.setIcon(QMessageBox.Question)
-        confirm_dialog.setText("Are you sure you want to check for updates?")
+        confirm_dialog.setText("Are you sure you want to update?")
         confirm_dialog.setInformativeText("The application will download the latest version and restart. Any unsaved work will be lost.")
         confirm_dialog.setWindowTitle("Confirm Update")
         confirm_dialog.setStandardButtons(QMessageBox.Yes | QMessageBox.No)

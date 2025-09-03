@@ -365,7 +365,7 @@ class ConceptLayer(QWidget):
                     widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
 
 class EditorLayer(ConceptLayer):
-    def __init__(self, parent=None): super().__init__("Video Editor", parent)
+    def __init__(self, parent=None): super().__init__("Portrait Editor", parent)
     def add_module_container(self): self.add_container(ModuleContainer(VideoProcessor()))
 
 class IniMakerLayer(ConceptLayer):
@@ -373,7 +373,7 @@ class IniMakerLayer(ConceptLayer):
     def add_module_container(self): self.add_container(ModuleContainer(IniMakerWidget()))
 
 class VideoProcessingLayer(ConceptLayer):
-    def __init__(self, parent=None): super().__init__("Video Processing", parent)
+    def __init__(self, parent=None): super().__init__("UI Processing", parent)
     def add_module_container(self): self.add_container(ModuleContainer(VideoProcessingWidget()))
 
 class CustomPluginsLayer(ConceptLayer):
@@ -385,11 +385,11 @@ class PyQt5PluginsLayer(ConceptLayer):
     def add_module_container(self): self.add_container(ModuleContainer(PluginLoader()))
 
 class OptimizeFrameLayer(ConceptLayer):
-    def __init__(self, parent=None): super().__init__("Optimize Frame", parent)
+    def __init__(self, parent=None): super().__init__("Optimize Frames", parent)
     def add_module_container(self): self.add_container(ModuleContainer(ProcessingWidget()))
 
 class IniMakerV2Layer(ConceptLayer):
-    def __init__(self, parent=None): super().__init__("INI Maker v2", parent)
+    def __init__(self, parent=None): super().__init__("INI File Maker V2", parent)
     def add_module_container(self): self.add_container(ModuleContainer(AnimationWidget()))
     def equalize_container_widths(self):
         total_width = self.container_widget.width()
@@ -611,14 +611,14 @@ class MainWindow(QMainWindow):
             return group_layout
 
         layouts = {
-            "Team Portrait Tool": ["Video Editor", "INI File Maker"],
-            "General UI Tool": ["Video Processing", "Optimize Frame", "INI File Maker v2"],
+            "Team Portrait Tool": ["Portrait Editor", "INI File Maker"],
+            "General UI Tool": ["UI Processing", "Optimize Frames", "INI File Maker V2"],
             "Custom Plugins": ["HTML Plugins", "PyQt5 Plugins", "Plugin Maker AI (Experimental)"]
         }
         add_functions = {
-            "Video Editor": self.add_editor_module, "INI File Maker": self.add_ini_maker_module,
-            "Video Processing": self.add_video_processing_module, "Optimize Frame": self.add_optimize_frame_module,
-            "INI File Maker v2": self.add_ini_maker_v2_module, "HTML Plugins": self.add_custom_plugins_module,
+            "Portrait Editor": self.add_editor_module, "INI File Maker": self.add_ini_maker_module,
+            "UI Processing": self.add_video_processing_module, "Optimize Frames": self.add_optimize_frame_module,
+            "INI File Maker V2": self.add_ini_maker_v2_module, "HTML Plugins": self.add_custom_plugins_module,
             "PyQt5 Plugins": self.add_pyqt5_plugins_module, "Plugin Maker AI (Experimental)": self.add_plugin_maker_ai_module
         }
         for group, modules in layouts.items():
@@ -712,10 +712,10 @@ class MainWindow(QMainWindow):
         self.settings_layer = SettingsLayer(self)
 
         self.module_layers = {
-            "Video Editor": self.editor_layer, "INI File Maker": self.ini_maker_layer,
-            "Video Processing": self.video_processing_layer, "HTML Plugins": self.custom_plugins_layer,
-            "PyQt5 Plugins": self.pyqt5_plugins_layer, "Optimize Frame": self.optimize_frame_layer,
-            "INI File Maker v2": self.ini_maker_v2_layer, "Home": self.home_layer,
+            "Portrait Editor": self.editor_layer, "INI File Maker": self.ini_maker_layer,
+            "UI Processing": self.video_processing_layer, "HTML Plugins": self.custom_plugins_layer,
+            "PyQt5 Plugins": self.pyqt5_plugins_layer, "Optimize Frames": self.optimize_frame_layer,
+            "INI File Maker V2": self.ini_maker_v2_layer, "Home": self.home_layer,
             "Plugin Maker AI (Experimental)": self.plugin_maker_ai_layer,
             "Tutorial": self.tutorial_layer,
             "Settings": self.settings_layer
@@ -935,8 +935,8 @@ class MainWindow(QMainWindow):
 
     def take_previews(self):
         self.modules_to_screenshot = [
-            "Home", "Tutorial", "Video Editor", "INI File Maker", "Video Processing",
-            "Optimize Frame", "INI File Maker v2", "HTML Plugins", "PyQt5 Plugins",
+            "Home", "Tutorial", "Portrait Editor", "INI File Maker", "UI Processing",
+            "Optimize Frames", "INI File Maker V2", "HTML Plugins", "PyQt5 Plugins",
             "Plugin Maker AI (Experimental)"
         ]
         self.original_theme = self.current_theme

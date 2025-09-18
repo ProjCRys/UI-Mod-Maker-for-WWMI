@@ -16,6 +16,7 @@ Ciaccona --> aca00308
 Danjin --> 18bf410a
 Encore --> 9f193f21
 Female_rover --> 30d29c41
+Iuno --> 2e021e71
 Jianxin --> 0f6df4e5
 Jinhsi --> d9d919eb
 Jinhsi(Newyear) --> e6d1829e
@@ -221,11 +222,11 @@ AnniEvent1080 --> a537dd14
 2.6BySun'sScourgeByMoon'sRevelation1080p --> 3a8e5f5a
 
 [Upcoming Characters]
-Iuno --> iunoHash
 Galbrena --> galbrenaHash
 Chisa --> chisaHash
 Qiuyuan --> qiunyuanHash
 Scar --> scarHash
 Geshu_Lin --> geshulinHash
 Buling --> bulingHash
+
 
